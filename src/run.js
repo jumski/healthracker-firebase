@@ -49,7 +49,6 @@ async function findEntries(trackerSnap) {
 }
 
 async function fetchState(uid) {
-  const result = await auth.signInAnonymously();
   const userSnap = await findOrCreateUser(uid, 'Andrew');
   const trackerSnap = await findOrCreateTracker(userSnap, 'Andrews tracker');
   const entriesSnaps = await findEntries(trackerSnap);
@@ -79,6 +78,7 @@ async function saveEntry(trackerSnap, date, entryData) {
 }
 
 async function run() {
+  const result = await auth.signInAnonymously();
   const uid = 123;
   let state;
 
