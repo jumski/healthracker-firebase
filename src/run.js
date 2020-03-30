@@ -68,9 +68,28 @@ async function fetchState(uid) {
   }
 }
 
+async function saveEntry(trackerSnap, date, entryData) {
+  const entryRef = db.collection('entries').doc(date);
+  await entryRef.set(entryData, { merge: true });
+  const entries = trackerSnap.data().entries;
+  const newEntries = entries.push(entryRef);
+  await trackerSnap.ref.set({ entries: newEntries }, { merge: true });
+
+  return await entryRef.get();
+}
+
 async function run() {
-  const { data: state } = await fetchState(123);
-  console.log('state', state);
+  const uid = 123;
+  let state;
+
+  state = await fetchState(uid);
+  console.log('state1', state.data);
+
+  await saveEntry(state.snaps.tracker, '2020-02-12', { parameters: { cough: true } });
+  await saveEntry(state.snaps.tracker, '2020-02-12', { parameters: { fever: true } });
+
+  state = await fetchState(uid);
+  console.log('state2', state.data);
 }
 
 run();
