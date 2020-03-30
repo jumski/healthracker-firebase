@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "esm": "^3.2.25"
+  },
+  "scripts": {
+    "execute": "node -r esm -r dotenv/config src/run.js"
+  }
+}
