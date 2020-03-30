@@ -17,7 +17,7 @@ async function findOrCreateUser(id, name) {
 
 async function findTracker(userSnap) {
   if (userSnap.data().tracker) {
-    const trackerRef = db.collection('trackers').doc(userSnap.data().tracker.toString());
+    const trackerRef = userSnap.data().tracker;
     const trackerSnap = await trackerRef.get();
 
     if (trackerSnap.exists) {
@@ -41,7 +41,7 @@ async function findOrCreateTracker(userSnap, trackerName) {
       || (await createTracker(userSnap, trackerName));
 }
 
-async function findEntries(trackerSnap) {
+async function fetchEntries(trackerSnap) {
   const entriesRefs = trackerSnap.data().entries;
   const entriesSnaps = await Promise.all(entriesRefs.map(e => e.get()));
 
@@ -51,7 +51,7 @@ async function findEntries(trackerSnap) {
 async function fetchState(uid) {
   const userSnap = await findOrCreateUser(uid, 'Andrew');
   const trackerSnap = await findOrCreateTracker(userSnap, 'Andrews tracker');
-  const entriesSnaps = await findEntries(trackerSnap);
+  const entriesSnaps = await fetchEntries(trackerSnap);
 
   return {
     data: {
@@ -68,10 +68,16 @@ async function fetchState(uid) {
 }
 
 async function saveEntry(trackerSnap, date, entryData) {
-  const entryRef = db.collection('entries').doc(date);
-  await entryRef.set(entryData, { merge: true });
   const entries = trackerSnap.data().entries;
-  const newEntries = entries.push(entryRef);
+  let newEntries = entries;
+  const entryRef = db.collection('entries').doc(date);
+
+  await entryRef.set(entryData, { merge: true });
+
+  if (!entries.find(e => e.id === entryRef.id)) {
+    newEntries = [ ...entries, entryRef ];
+  }
+
   await trackerSnap.ref.set({ entries: newEntries }, { merge: true });
 
   return await entryRef.get();
@@ -80,16 +86,18 @@ async function saveEntry(trackerSnap, date, entryData) {
 async function run() {
   const result = await auth.signInAnonymously();
   const uid = 123;
-  let state;
 
-  state = await fetchState(uid);
-  console.log('state1', state.data);
+  const userSnap = await findOrCreateUser(uid, 'Andrew');
 
-  await saveEntry(state.snaps.tracker, '2020-02-12', { parameters: { cough: true } });
-  await saveEntry(state.snaps.tracker, '2020-02-12', { parameters: { fever: true } });
+  let trackerSnap = await findOrCreateTracker(userSnap, 'Andrews tracker');
+  let entriesSnaps = await fetchEntries(trackerSnap);
+  console.log(entriesSnaps.map(e => e.data()));
 
-  state = await fetchState(uid);
-  console.log('state2', state.data);
+  await saveEntry(trackerSnap, '2020-01-23', { parameters: { cough: true } });
+
+  trackerSnap = await findOrCreateTracker(userSnap, 'Andrews tracker');
+  entriesSnaps = await fetchEntries(trackerSnap);
+  console.log(entriesSnaps.map(e => e.data()));
 }
 
 run();
